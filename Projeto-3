@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de IMC com Webservice</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: rgba(228, 228, 228, 0.979);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #0f0f0f;
+        }
+
+        form {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            width: 300px;
+        }
+
+        form label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+            color: #555;
+        }
+
+        form input[type="text"],
+        form input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            appearance: textfield;
+        }
+
+        form input[type="number"]::-webkit-outer-spin-button,
+      
+        form input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        form input[type="number"] {
+            appearance: none;
+            -moz-appearance: textfield;
+        }
+
+        form button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        form button:hover {
+            background-color: #45a049;
+        }
+
+        table {
+            width: 80%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #e53935;
+        }
+
+        #removeMaiorIMC, #removeMenorIMC {
+            margin: 0 10px;
+            background-color: #ff5202;
+        }
+
+        #removeMaiorIMC:hover, #removeMenorIMC:hover {
+            background-color: #f5904d;
+        }
+
+        .peso-button {
+            margin-right: 10px; 
+        }
+
+        .botao-aumentar {
+            background-color: #836FFF;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .botao-diminuir {
+            background-color: #FFD700;
+            color: black;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Calculadora de IMC com Webservice</h1>
+
+    <form id="formulario">
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" required>
+
+        <label for="peso">Peso (kg):</label>
+        <input type="number" id="peso" step="0.1" required>
+
+        <label for="altura">Altura (m):</label>
+        <input type="number" id="altura" step="0.01" required>
+
+        <button type="submit">Adicionar Pessoa</button>
+    </form>
+
+    <div>
+        <button id="removeMaiorIMC">Remover maior IMC</button>
+        <button id="removeMenorIMC">Remover menor IMC</button>
+    </div>
+
+    <table id="tabela">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Peso (kg)</th>
+                <th>Altura (m)</th>
+                <th>IMC</th>
+                <th>Status</th>
+                <th>Opções</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        const apiUrl = "https://ifsp.ddns.net/webservices/imc/";
+
+        async function fetchIMCData(endpoint = '', options = {}) {
+            try {
+                const response = await fetch(apiUrl + endpoint, options);
+                
+                // Verifica se a resposta não está OK
+                if (!response.ok) {
+                    // Adiciona informações sobre o erro
+                    const errorMessage = await response.text(); // Captura o texto do erro
+                    throw new Error(`Erro ${response.status}: ${errorMessage}`);
+                }
+        
+                // Retorna o JSON da resposta
+                return await response.json();
+            } catch (error) {
+                console.error('Erro ao conectar com o servidor:', error);
+                alert('Erro ao conectar com o servidor! Verifique o console para mais detalhes.');
+            }
+        }
+        
+        function formatarComoUrlEncoded(data) {
+            const params = new URLSearchParams();
+            for (const key in data) {
+                if (data.hasOwnProperty(key)) {
+                    params.append(key, data[key]);
+                }
+            }
+            return params.toString();
+        }
+
+        async function adicionarPessoa(nome, peso, altura) {
+            const pessoa = { nome, peso, altura };
+        
+            const response = await fetchIMCData('pessoas', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formatarComoUrlEncoded(pessoa)
+            });
+        
+            console.log('Resposta do backend:', response); // Verifique a resposta no console
+           
+
+            if (response && response.id) { // Ajuste aqui conforme a estrutura de resposta do backend
+                renderizarPessoa(response); // Exibe a nova pessoa no front-end
+            } else {
+                alert('Erro ao adicionar pessoa no backend');
+            }
+        }
+        
+        function renderizarPessoa(pessoa) {
+            const tabela = document.getElementById("tabela").getElementsByTagName('tbody')[0];
+            const novaLinha = document.createElement('tr');
+
+            const celulaNome = document.createElement('td');
+            celulaNome.textContent = pessoa.nome;
+
+            const celulaPeso = document.createElement('td');
+            celulaPeso.textContent = pessoa.peso;
+
+            const celulaAltura = document.createElement('td');
+            celulaAltura.textContent = pessoa.altura;
+
+            const celulaIMC = document.createElement('td');
+            celulaIMC.textContent = pessoa.imc;
+
+            const celulaStatus = document.createElement('td');
+            celulaStatus.textContent = pessoa.status;
+
+            const celulaOpcoes = document.createElement('td');
+            const botaoRemover = document.createElement('button');
+            botaoRemover.textContent = 'Remover';
+            botaoRemover.classList.add('botao-remover');
+            botaoRemover.addEventListener('click', async function() {
+                const sucesso = await removerPessoa(pessoa.id);
+                if (sucesso) novaLinha.remove();
+            });
+
+            const botaoAumentarPeso = document.createElement('button');
+            botaoAumentarPeso.textContent = '+ Peso';
+            botaoAumentarPeso.classList.add('botao-aumentar', 'peso-button');
+            botaoAumentarPeso.addEventListener('click', async function() {
+                const novoPeso = pessoa.peso + 0.5;
+                const sucesso = await editarPeso(pessoa.id, novoPeso);
+                if (sucesso) {
+                    celulaPeso.textContent = novoPeso.toFixed(1);
+                    pessoa.peso = novoPeso;
+                }
+            });
+
+            const botaoDiminuirPeso = document.createElement('button');
+            botaoDiminuirPeso.textContent = '- Peso';
+            botaoDiminuirPeso.classList.add('botao-diminuir', 'peso-button');
+            botaoDiminuirPeso.addEventListener('click', async function() {
+                const novoPeso = pessoa.peso - 0.5;
+                if (novoPeso >= 0) {
+                    const sucesso = await editarPeso(pessoa.id, novoPeso);
+                    if (sucesso) {
+                        celulaPeso.textContent = novoPeso.toFixed(1);
+                        pessoa.peso = novoPeso;
+                    }
+                }
+            });
+
+            celulaOpcoes.appendChild(botaoAumentarPeso);
+            celulaOpcoes.appendChild(botaoDiminuirPeso);
+            celulaOpcoes.appendChild(botaoRemover);
+
+            novaLinha.appendChild(celulaNome);
+            novaLinha.appendChild(celulaPeso);
+            novaLinha.appendChild(celulaAltura);
+            novaLinha.appendChild(celulaIMC);
+            novaLinha.appendChild(celulaStatus);
+            novaLinha.appendChild(celulaOpcoes);
+
+            tabela.appendChild(novaLinha);
+        }
+
+        async function removerPessoa(id) {
+            try {
+                const response = await fetchIMCData(`pessoas/${id}`, {
+                    method: 'DELETE',
+                });
+        
+                if (!response) throw new Error('Nenhuma resposta do servidor.');
+        
+                return response.success; // Certifique-se de que a resposta tem a propriedade success
+            } catch (error) {
+                console.error(`Erro ao remover a pessoa com ID ${id}:`, error);
+                alert('Erro ao remover a pessoa! Verifique o console para mais detalhes.');
+                return false; // Retorna falso em caso de erro
+            }
+        }
+
+        async function editarPeso(id, novoPeso) {
+            try {
+                const response = await fetchIMCData(`pessoas/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formatarComoUrlEncoded({ peso: novoPeso })
+                });
+        
+                if (!response) throw new Error('Nenhuma resposta do servidor.');
+        
+                return response.success; // Verifique se a resposta tem a propriedade success
+            } catch (error) {
+                console.error(`Erro ao editar o peso da pessoa com ID ${id}:`, error);
+                alert('Erro ao editar o peso! Verifique o console para mais detalhes.');
+                return false; // Retorna falso em caso de erro
+            }
+        }
+        
+
+        document.getElementById("formulario").addEventListener("submit", function (event) {
+            event.preventDefault();
+            const nome = document.getElementById("nome").value;
+            const peso = parseFloat(document.getElementById("peso").value);
+            const altura = parseFloat(document.getElementById("altura").value);
+
+            if (peso <= 0 || altura <= 0) {
+                alert("Peso e Altura devem ser maiores que zero.");
+                return;
+            }
+
+            adicionarPessoa(nome, peso, altura);
+            document.getElementById("formulario").reset();
+        });
+
+        async function removerPorIMC(comparacao) {
+            const pessoas = await fetchIMCData('pessoas');
+            if (!pessoas || pessoas.length === 0) return;
+
+            let pessoaAlvo = pessoas[0];
+            pessoas.forEach(p => {
+                if (comparacao(parseFloat(p.imc), parseFloat(pessoaAlvo.imc))) {
+                    pessoaAlvo = p;
+                }
+            });
+
+            const sucesso = await removerPessoa(pessoaAlvo.id);
+            if (sucesso) location.reload(); // Atualiza a tabela após a remoção
+        }
+
+        document.getElementById("removeMaiorIMC").addEventListener("click", function () {
+            removerPorIMC((imcAtual, imcAlvo) => imcAtual > imcAlvo);
+        });
+
+        document.getElementById("removeMenorIMC").addEventListener("click", function () {
+            removerPorIMC((imcAtual, imcAlvo) => imcAtual < imcAlvo);
+        });
+    </script>
+
+</body>
+</html>
